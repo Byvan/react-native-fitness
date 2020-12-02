@@ -63,6 +63,13 @@ export declare function disconnect(): Promise<boolean>
  */
 export declare function logout(): Promise<boolean>
 
+  
+/**
+ * Log out from Google account (method 2). 
+ * 
+ * @return Promise<boolean>
+ */
+export declare function googleLogout(): Promise<boolean>
 /**
  * Data interval.
  * 
