@@ -10,6 +10,15 @@ const logout = Platform.select({
 });
 
 /**
+ * Log out from Google Account (method 2)
+ * @returns {*}
+ */
+const googleLogout = Platform.select({
+  ios: () => null,
+  android: () => NativeModules.Fitness.googleLogout(),
+});
+
+/**
  * Disconnect Google Fit
  * @returns {*}
  */
