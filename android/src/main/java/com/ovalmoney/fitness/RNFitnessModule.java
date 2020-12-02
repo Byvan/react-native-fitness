@@ -116,6 +116,16 @@ public class RNFitnessModule extends ReactContextBaseJavaModule{
   }
 
   @ReactMethod
+  public void googleLogout(Promise promise){
+    final Activity activity = getCurrentActivity();
+    if(activity != null) {
+      manager.googleLogout(activity, promise);
+    }else{
+      promise.reject(new Throwable());
+    }
+  }
+  
+  @ReactMethod
   public void disconnect(Promise promise){
     final Activity activity = getCurrentActivity();
     if(activity != null) {
