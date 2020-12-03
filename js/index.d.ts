@@ -101,7 +101,7 @@ export declare interface RequestManual {
  * If startDate is not provided an error will be thrown. 
  * If endDate is not provided, the current date will be used.
  * 
- * @param request RequestManual
+ * @param request Request
  * @return Promise<StepRecord[]>
  */
 export declare function getManualSteps(request: RequestManual): Promise<StepRecord[]>

@@ -31,11 +31,20 @@ const disconnect = Platform.select({
  * Get native getManualSteps with steps added by manual
  * @param startDate
  * @param endDate
+  * @param interval
  * @returns {*}
  */
 
-const getManualSteps = ({ startDate, endDate }) => NativeModules.Fitness.getManualSteps(
+const getManualSteps = ({ startDate, endDate, interval}) => {
+  if(Platform.OS === 'ios'){
+    return NativeModules.Fitness.getManualSteps(
     parseDate(startDate), parseDate(endDate));
+  }
+  if(Platform.OS === 'android'){
+   return NativeModules.Fitness.getManualSteps(
+    parseDate(startDate), parseDate(endDate), interval);
+  }
+}
 
 
 /**

@@ -279,6 +279,69 @@ public class Manager implements ActivityEventListener {
                 });
     }
 
+    public void getManualSteps(Context context, double startDate, double endDate, String customInterval, final Promise promise){
+        DataSource ESTIMATED_STEP_DELTAS = new DataSource.Builder()
+                .setDataType(DataType.TYPE_STEP_COUNT_DELTA)
+                .setType(DataSource.TYPE_DERIVED)
+                .setStreamName("estimated_steps")
+                .setAppPackageName("com.google.android.gms")
+                .build();
+
+        TimeUnit interval = getInterval(customInterval);
+
+        DataReadRequest readRequest = new DataReadRequest.Builder()
+                .aggregate(ESTIMATED_STEP_DELTAS,    DataType.AGGREGATE_STEP_COUNT_DELTA)
+                .bucketByTime(1, interval)
+                .setTimeRange((long) startDate, (long) endDate, TimeUnit.MILLISECONDS)
+                .build();
+
+
+        Fitness.getHistoryClient(context, GoogleSignIn.getLastSignedInAccount(context))
+                .readData(readRequest)
+                .addOnSuccessListener(new OnSuccessListener<DataReadResponse>() {
+                    @Override
+                    public void onSuccess(DataReadResponse dataReadResponse) {
+                        if (dataReadResponse.getBuckets().size() > 0) {
+                            WritableArray steps = Arguments.createArray();
+
+                            for (Bucket bucket : dataReadResponse.getBuckets()) {
+
+                                List<DataSet> dataSets = bucket.getDataSets();
+                                for (DataSet dataSet : dataSets) {
+                                    boolean canSave = false;
+                                    Log.d("DATASET", dataSets.toString());
+                                    for (DataPoint dp : dataSet.getDataPoints()) {
+                                        for(Field field : dp.getDataType().getFields()) {
+                                            if ("user_input".equals(dp.getOriginalDataSource().getStreamName())){
+                                                canSave = true;
+                                            }
+                                            Log.d("USER_INPUT_SET", dataSet.toString());
+                                            Log.d("USER_INPUT_STEPS", steps.toString());
+                                        }
+                                    }
+                                    if(canSave){
+                                        processStep(dataSet, steps);
+                                    }
+
+                                }
+                            }
+                            promise.resolve(steps);
+                        }
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        promise.reject(e);
+                    }
+                })
+                .addOnCompleteListener(new OnCompleteListener<DataReadResponse>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DataReadResponse> task) {
+                    }
+                });
+    }
+
     public void getSteps(Context context, double startDate, double endDate, String customInterval, final Promise promise){
         DataSource ESTIMATED_STEP_DELTAS = new DataSource.Builder()
                 .setDataType(DataType.TYPE_STEP_COUNT_DELTA)
@@ -309,21 +372,7 @@ public class Manager implements ActivityEventListener {
 
                                 List<DataSet> dataSets = bucket.getDataSets();
                                 for (DataSet dataSet : dataSets) {
-                                    boolean canSave = true;
-                                    Log.d("DATASET", dataSets.toString());
-                                    for (DataPoint dp : dataSet.getDataPoints()) {
-                                        for(Field field : dp.getDataType().getFields()) {
-                                            if ("user_input".equals(dp.getOriginalDataSource().getStreamName())){
-                                                canSave = false;
-                                            }
-                                            Log.d("USER_INPUT_SET", dataSet.toString());
-                                            Log.d("USER_INPUT_STEPS", steps.toString());
-                                        }
-                                    }
-                                    if(canSave){
-                                        processStep(dataSet, steps);
-                                    }
-
+                                    processStep(dataSet, steps);
                                 }
                             }
                             promise.resolve(steps);
