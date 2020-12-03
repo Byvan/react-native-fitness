@@ -89,6 +89,23 @@ export declare interface StepRecord {
   quantity: number
 }
 
+export declare interface RequestManual {
+  startDate: string
+  endDate?: string
+  interval?: Interval
+}
+
+/**
+ * Fetch manual added steps on a given period of time. 
+ * 
+ * If startDate is not provided an error will be thrown. 
+ * If endDate is not provided, the current date will be used.
+ * 
+ * @param request RequestManual
+ * @return Promise<StepRecord[]>
+ */
+export declare function getManualSteps(request: RequestManual): Promise<StepRecord[]>
+
 /**
  * Fetch steps on a given period of time. 
  * 

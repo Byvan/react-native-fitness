@@ -148,6 +148,49 @@ RCT_REMAP_METHOD(isAuthorized,
     
 }
 
+RCT_REMAP_METHOD(getManualSteps,
+                 withStartDate: (double) startDateManual
+                 andEndDate: (double) endDateManual
+                 withStepsResolver:(RCTPromiseResolveBlock)resolve
+                 andStepsRejecter:(RCTPromiseRejectBlock)reject){
+    
+    NSInteger limit = 0;
+    
+    
+    NSDate * sd = [RCTFitness dateFromTimeStamp: startDateManual / 1000];
+    NSDate * ed = [RCTFitness dateFromTimeStamp: endDateManual   / 1000];
+    
+    NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:sd endDate:ed options:HKQueryOptionNone];
+
+    HKSampleQuery *query = [[HKSampleQuery alloc] initWithSampleType: [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount]
+                                                       predicate: predicate
+                                                           limit: limit
+                                                 sortDescriptors: nil
+                                                  resultsHandler:^(HKSampleQuery *query, NSArray* results, NSError *error){
+                                                        dispatch_async(dispatch_get_main_queue(), ^{
+                                                          // sends the data using HTTP
+                                                          double count = 0;
+                                            
+                                                          for(HKQuantitySample *samples in results){
+                                                              if( [ [[[samples sourceRevision] source] name] isEqual: @"Health"] || [ [[[samples sourceRevision] source] name] isEqual: @"Здоровье"]){
+                                                                  count += [[samples quantity] doubleValueForUnit:[HKUnit countUnit]];
+                                                              }
+                                                           }
+                                                            NSDictionary *elem = @{
+                                                                @"quantity" :  [NSNumber numberWithInteger:count],
+                                                                @"startDate" : [RCTFitness ISO8601StringFromDate: sd],
+                                                                @"endDate" : [RCTFitness ISO8601StringFromDate: ed],
+                                                            };
+                                                            
+                                                            dispatch_async(dispatch_get_main_queue(), ^{
+                                                                resolve(elem);
+                                                            });
+                                                      });
+                                                  }];
+      [self.healthStore executeQuery:query];
+    
+}
+
 RCT_REMAP_METHOD(getSteps,
                  withStartDate: (double) startDate
                  andEndDate: (double) endDate

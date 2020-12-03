@@ -28,9 +28,21 @@ const disconnect = Platform.select({
 });
 
 /**
+ * Get native getManualSteps with steps added by manual
+ * @param startDate
+ * @param endDate
+ * @returns {*}
+ */
+
+const getManualSteps = ({ startDate, endDate }) => NativeModules.Fitness.getManualSteps(
+    parseDate(startDate), parseDate(endDate));
+
+
+/**
  * Get native getStep with parsed Dates
  * @param startDate
  * @param endDate
+ * @param interval
  * @returns {*}
  */
 const getSteps = ({ startDate, endDate, interval = "days" }) =>
@@ -119,4 +131,5 @@ export default {
   getCalories,
   getHeartRate,
   getSleepAnalysis,
+  getManualSteps
 };
