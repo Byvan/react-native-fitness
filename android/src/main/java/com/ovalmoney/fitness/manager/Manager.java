@@ -66,6 +66,7 @@ public class Manager implements ActivityEventListener {
     private final static int GOOGLE_FIT_PERMISSIONS_REQUEST_CODE = 111;
     private final static int GOOGLE_PLAY_SERVICE_ERROR_DIALOG = 2404;
     private final static DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault());
+    private final static DateFormat dateFormatForManual = new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault());
 
     private Promise promise;
 
@@ -280,53 +281,48 @@ public class Manager implements ActivityEventListener {
     }
 
     public void getManualSteps(Context context, double startDate, double endDate, String customInterval, final Promise promise){
-        DataSource ESTIMATED_STEP_DELTAS = new DataSource.Builder()
-                .setDataType(DataType.TYPE_STEP_COUNT_DELTA)
-                .setType(DataSource.TYPE_DERIVED)
-                .setStreamName("estimated_steps")
-                .setAppPackageName("com.google.android.gms")
+
+        SessionReadRequest readRequest = new SessionReadRequest.Builder()
+                .setTimeInterval((long) startDate, (long) endDate,  TimeUnit.MILLISECONDS)
+                .read(DataType.TYPE_STEP_COUNT_DELTA)
+                .readSessionsFromAllApps()
                 .build();
 
-        TimeUnit interval = getInterval(customInterval);
-
-        DataReadRequest readRequest = new DataReadRequest.Builder()
-                .aggregate(ESTIMATED_STEP_DELTAS,    DataType.AGGREGATE_STEP_COUNT_DELTA)
-                .bucketByTime(1, interval)
-                .setTimeRange((long) startDate, (long) endDate, TimeUnit.MILLISECONDS)
-                .build();
-
-
-        Fitness.getHistoryClient(context, GoogleSignIn.getLastSignedInAccount(context))
-                .readData(readRequest)
-                .addOnSuccessListener(new OnSuccessListener<DataReadResponse>() {
+        Fitness.getSessionsClient(context, GoogleSignIn.getLastSignedInAccount(context))
+                .readSession(readRequest)
+                .addOnSuccessListener(new OnSuccessListener<SessionReadResponse>() {
                     @Override
-                    public void onSuccess(DataReadResponse dataReadResponse) {
-                        if (dataReadResponse.getBuckets().size() > 0) {
-                            WritableArray steps = Arguments.createArray();
+                    public void onSuccess(SessionReadResponse sessionReadResponse) {
+                        // Get a list of the sessions that match the criteria to check the result.
+                        List<Session> sessions = sessionReadResponse.getSessions();
+                        Log.i("MANUAL_SESSIONS_SIZE", "Session read was successful. Number of returned sessions is: "
+                                + sessions.size());
 
-                            for (Bucket bucket : dataReadResponse.getBuckets()) {
+                        WritableMap stepMap = Arguments.createMap();
+                        int stepCount = 0;
 
-                                List<DataSet> dataSets = bucket.getDataSets();
-                                for (DataSet dataSet : dataSets) {
-                                    boolean canSave = false;
-                                    Log.d("DATASET", dataSets.toString());
-                                    for (DataPoint dp : dataSet.getDataPoints()) {
-                                        for(Field field : dp.getDataType().getFields()) {
-                                            if ("user_input".equals(dp.getOriginalDataSource().getStreamName())){
-                                                canSave = true;
-                                            }
-                                            Log.d("USER_INPUT_SET", dataSet.toString());
-                                            Log.d("USER_INPUT_STEPS", steps.toString());
+                        for (Session session : sessions) {
+                            // Process the session
+//                            dumpSession(session);
+                            Log.d("MANUAL_SESSION", session.toString());
+                            // Process the data sets for this session
+                            List<DataSet> dataSets = sessionReadResponse.getDataSet(session);
+                            for (DataSet dataSet : dataSets) {
+                                Log.d("MANUAL_dataSets", dataSet.toString());
+//                                dumpDataSet(dataSet);
+                                for (DataPoint dp : dataSet.getDataPoints()) {
+                                    for(Field field : dp.getDataType().getFields()) {
+                                        if ("user_input".equals(dp.getOriginalDataSource().getStreamName())){
+                                            Log.d("MANUAL_INPUT", "TRUE");
+                                            stepCount += dp.getValue(field).asInt();
                                         }
+                                        Log.d("MANUAL__SET", dataSet.toString());
                                     }
-                                    if(canSave){
-                                        processStep(dataSet, steps);
-                                    }
-
                                 }
+                                stepMap.putDouble("quantity", stepCount);
                             }
-                            promise.resolve(steps);
                         }
+                        promise.resolve(stepMap);
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
@@ -334,12 +330,8 @@ public class Manager implements ActivityEventListener {
                     public void onFailure(@NonNull Exception e) {
                         promise.reject(e);
                     }
-                })
-                .addOnCompleteListener(new OnCompleteListener<DataReadResponse>() {
-                    @Override
-                    public void onComplete(@NonNull Task<DataReadResponse> task) {
-                    }
                 });
+
     }
 
     public void getSteps(Context context, double startDate, double endDate, String customInterval, final Promise promise){
@@ -567,6 +559,9 @@ public class Manager implements ActivityEventListener {
                 stepMap.putString("startDate", dateFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
                 stepMap.putString("endDate", dateFormat.format(dp.getEndTime(TimeUnit.MILLISECONDS)));
                 stepMap.putDouble("quantity", dp.getValue(field).asInt());
+                stepMap.putString("startDateParsed", dateFormatForManual.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
+                stepMap.putString("endDateParsed", dateFormatForManual.format(dp.getEndTime(TimeUnit.MILLISECONDS)));
+
                 map.pushMap(stepMap);
             }
         }
